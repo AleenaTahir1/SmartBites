@@ -289,24 +289,9 @@ class LoginPage(BasePage):
     def login(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
-
-        # Clear previous error states
-        self.error_label.pack_forget()
-        self.password_frame.configure(border_width=0)
-
-        if not username or not password:
-            return
-
-        # Password length validation
-        if not self.validate_password(password):
-            self.error_label.configure(text="Password must be at least 6 characters long")
-            self.error_label.lift()  # Bring error label to front
-            self.error_label.pack(pady=(0, 5))
-            self.password_frame.configure(border_width=2, border_color=ERROR_COLOR)
-            return
-
-        # TODO: Implement actual login logic
-        print(f"Logging in with username: {username}")
+        
+        # For now, just navigate to home page without authentication
+        self.controller.show_home_page()
 
     def toggle_password_visibility(self):
         self.show_password = not self.show_password

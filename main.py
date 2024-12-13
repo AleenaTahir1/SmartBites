@@ -3,6 +3,12 @@ from gui.constants import *
 from gui.login_page import LoginPage
 from gui.signup_page import SignupPage
 from gui.forgot_password_page import ForgotPasswordPage
+from gui.home_page import HomePage
+from gui.orders_page import OrdersPage
+from gui.menu_management_page import MenuManagementPage
+from gui.user_management_page import UserManagementPage
+from gui.reports_page import ReportsPage
+from gui.settings_page import SettingsPage
 
 class SmartBitesApp(ctk.CTk):
     def __init__(self):
@@ -11,17 +17,23 @@ class SmartBitesApp(ctk.CTk):
         # Configure window
         self.title("SmartBites")
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.minsize(800, 500)
+        self.minsize(800, 600)
         
         # Set theme
-        ctk.set_appearance_mode("light")  # Changed to light mode for better visibility
+        ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
 
         # Initialize pages dictionary
         self.pages = {
             "LoginPage": LoginPage,
             "SignupPage": SignupPage,
-            "ForgotPasswordPage": ForgotPasswordPage
+            "ForgotPasswordPage": ForgotPasswordPage,
+            "HomePage": HomePage,
+            "OrdersPage": OrdersPage,
+            "MenuManagementPage": MenuManagementPage,
+            "UserManagementPage": UserManagementPage,
+            "ReportsPage": ReportsPage,
+            "SettingsPage": SettingsPage
         }
         
         # Create and add pages
@@ -43,15 +55,28 @@ class SmartBitesApp(ctk.CTk):
         page.tkraise()
 
     def show_login_page(self):
-        if hasattr(self, 'login_page'):
-            self.login_page.show()
+        self.show_page("LoginPage")
 
     def show_signup_page(self):
         self.show_page("SignupPage")
 
-    def show_menu_page(self):
-        # This will be implemented when we create the menu page
-        pass
+    def show_home_page(self):
+        self.show_page("HomePage")
+        
+    def show_orders_page(self):
+        self.show_page("OrdersPage")
+        
+    def show_menu_management_page(self):
+        self.show_page("MenuManagementPage")
+        
+    def show_user_management_page(self):
+        self.show_page("UserManagementPage")
+        
+    def show_reports_page(self):
+        self.show_page("ReportsPage")
+        
+    def show_settings_page(self):
+        self.show_page("SettingsPage")
 
     def show_cart_page(self):
         # This will be implemented when we create the cart page
