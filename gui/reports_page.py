@@ -3,13 +3,27 @@ from .admin_base_page import AdminBasePage
 from .constants import *
 from database.config import SessionLocal
 from database.models import Order, MenuItem, User, OrderItem, OrderStatus
+from sqlalchemy import func, desc, extract
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.platypus import Table, TableStyle
+import logging
 from datetime import datetime, timedelta
+from tkinter import filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
-from sqlalchemy import func, desc, extract
 from PIL import Image
 import os
+import csv
+from tkinter import messagebox
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.platypus import Table, TableStyle
 
 class ReportsPage(AdminBasePage):
     def __init__(self, parent, controller):
@@ -155,10 +169,13 @@ class ReportsPage(AdminBasePage):
             start_date = today - timedelta(days=30)
         elif period == "This Month":
             start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        else:  # This Year
+        elif period == "This Year":
             start_date = today.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            start_date = today - timedelta(days=7)  # Default to Last 7 Days if not recognized
         
-        return start_date, today
+        end_date = today  # End date is today
+        return start_date, end_date
     
     def update_metrics(self):
         # Clear existing metrics
@@ -413,6 +430,20 @@ class ReportsPage(AdminBasePage):
                 Order.status != OrderStatus.CANCELLED
             ).group_by('hour').order_by(desc('count')).first()
             
+            if busiest_hour is None:
+                logging.warning('No busiest hour data available')
+                formatted_hour = '• Busiest Hour: Not Available'
+                peak_period = 'Not Available'
+            else:
+                try:
+                    hour = int(busiest_hour.hour)
+                    formatted_hour = f'• Busiest Hour: {hour:02d}:00 - {(hour+1) % 24:02d}:00'
+                    peak_period = 'Evening' if 17 <= hour <= 22 else 'Afternoon' if 12 <= hour <= 16 else 'Morning'
+                except (ValueError, AttributeError) as e:
+                    logging.error('Formatting error for busiest_hour: %s, Error: %s', busiest_hour, e)
+                    formatted_hour = '• Busiest Hour: Not Available'
+                    peak_period = 'Not Available'
+            
             # Get top selling item
             top_item = db.query(
                 MenuItem.name,
@@ -446,8 +477,8 @@ class ReportsPage(AdminBasePage):
 
 📈 Operations Metrics
 • Order Completion Rate: {completion_rate:.1f}%
-• Busiest Hour: {busiest_hour.hour:02d}:00 - {(busiest_hour.hour+1):02d}:00
-• Peak Business Period: {f'Evening' if 17 <= busiest_hour.hour <= 22 else f'Afternoon' if 12 <= busiest_hour.hour <= 16 else f'Morning'}
+{formatted_hour}
+• Peak Business Period: {peak_period}
 
 🏆 Top Performer
 • Most Popular Item: {top_item.name}
@@ -467,11 +498,251 @@ class ReportsPage(AdminBasePage):
         finally:
             db.close()
 
+    def get_report_data(self):
+        db = SessionLocal()
+        try:
+            start_date, end_date = self.get_date_range()
+            
+            # Get total revenue
+            total_revenue = db.query(func.sum(Order.total_amount)).filter(
+                Order.created_at.between(start_date, end_date),
+                Order.status != OrderStatus.CANCELLED
+            ).scalar() or 0
+            
+            # Get total orders
+            total_orders = db.query(func.count(Order.id)).filter(
+                Order.created_at.between(start_date, end_date),
+                Order.status != OrderStatus.CANCELLED
+            ).scalar() or 0
+            
+            # Get average order value
+            avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
+            
+            # Get active users (users who placed orders)
+            active_users = db.query(func.count(func.distinct(Order.customer_id))).filter(
+                Order.created_at.between(start_date, end_date),
+                Order.status != OrderStatus.CANCELLED
+            ).scalar() or 0
+            
+            # Get previous period metrics for comparison
+            period_delta = end_date - start_date
+            prev_start = start_date - period_delta
+            prev_end = start_date
+            
+            prev_revenue = db.query(func.sum(Order.total_amount)).filter(
+                Order.created_at.between(prev_start, prev_end),
+                Order.status != OrderStatus.CANCELLED
+            ).scalar() or 0
+            
+            # Calculate growth
+            revenue_growth = ((total_revenue - prev_revenue) / prev_revenue * 100) if prev_revenue > 0 else 0
+            
+            # Create metric data
+            metrics = [
+                ("Total Revenue", f"Rs. {total_revenue:,.2f}", f"{revenue_growth:+.1f}%"),
+                ("Total Orders", str(total_orders), ""),
+                ("Average Order", f"Rs. {avg_order_value:,.2f}", ""),
+                ("Active Users", str(active_users), "")
+            ]
+            
+            return metrics
+        
+        finally:
+            db.close()
+
+    def export_report(self):
+        from tkinter import filedialog
+        from tkinter import messagebox
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        from reportlab.platypus import Table, TableStyle
+        from datetime import datetime
+
+        # Gather data for the report
+        report_data = self.get_report_data()
+
+        # Gather analytics data
+        db = SessionLocal()
+        try:
+            start_date, end_date = self.get_date_range()
+            
+            # Get peak hours
+            peak_hours_data = db.query(
+                extract('hour', Order.created_at).label('hour'),
+                func.count(Order.id).label('count')
+            ).filter(
+                Order.created_at.between(start_date, end_date),
+                Order.status != OrderStatus.CANCELLED
+            ).group_by('hour').order_by(desc('count')).first()
+            
+            if peak_hours_data:
+                hour = int(peak_hours_data.hour)
+                peak_hours = f"{hour:02d}:00 - {(hour+1) % 24:02d}:00"
+            else:
+                peak_hours = "Not Available"
+            
+            # Get popular items
+            popular_items_data = db.query(
+                MenuItem.name,
+                func.sum(OrderItem.quantity).label('total_quantity')
+            ).select_from(MenuItem).join(
+                OrderItem, MenuItem.id == OrderItem.menu_item_id
+            ).join(
+                Order, OrderItem.order_id == Order.id
+            ).filter(
+                Order.created_at.between(start_date, end_date),
+                Order.status != OrderStatus.CANCELLED
+            ).group_by(MenuItem.name).order_by(desc('total_quantity')).limit(2).all()
+            
+            popular_items = ", ".join([f"{item.name} ({int(item.total_quantity)} orders)" 
+                                     for item in popular_items_data]) if popular_items_data else "Not Available"
+            
+        finally:
+            db.close()
+
+        # Open file dialog to choose save location
+        file_path = filedialog.asksaveasfilename(defaultextension='.pdf',
+                                               filetypes=[('PDF files', '*.pdf'), ('All files', '*.*')])
+        if not file_path:
+            return  # User canceled the save dialog
+
+        try:
+            # Create PDF with better styling
+            c = canvas.Canvas(file_path, pagesize=letter)
+            width, height = letter
+
+            # Add a light gray background header
+            c.setFillColor(colors.lightgrey)
+            c.rect(0, height - 120, width, 120, fill=True)
+            
+            # Header with logo placeholder
+            c.setFillColor(colors.black)
+            c.setFont("Helvetica-Bold", 24)
+            c.drawString(inch, height - 40, "SmartBites - Admin End")
+            
+            # Report title with current date and time
+            current_datetime = datetime.now()
+            formatted_date = current_datetime.strftime("%Y-%m-%d")
+            formatted_time = current_datetime.strftime("%I:%M %p")
+            c.setFont("Helvetica", 14)
+            c.drawString(inch, height - 60, f"Daily Order Report - {formatted_date}")
+            c.drawString(inch + 4*inch, height - 60, f"Generated at: {formatted_time}")
+            c.setFont("Helvetica", 12)
+            c.drawString(inch, height - 80, "University Cafeteria")
+            c.drawString(inch, height - 100, "Generated By: SmartBites Admin Panel")
+
+            # Add decorative line
+            c.setStrokeColor(colors.blue)
+            c.setLineWidth(2)
+            c.line(inch, height - 130, width - inch, height - 130)
+
+            # Analytics Insights Section
+            y = height - 180
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(inch, y, "Analytics Insights")
+            
+            c.setFont("Helvetica", 12)
+            y -= 25
+            c.drawString(inch, y, f"Peak Order Hours: {peak_hours}")
+            y -= 20
+            c.drawString(inch, y, f"Most Popular Items: {popular_items}")
+            
+            # Order Breakdown
+            y -= 40
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(inch, y, "Order Breakdown")
+            y -= 30
+
+            # Create the order table
+            data = [['Order ID', 'User ID', 'Items', 'Time', 'Amount (PKR)']]
+            
+            # Get order data
+            orders = db.query(
+                Order.id,
+                Order.customer_id,
+                Order.created_at,
+                Order.total_amount
+            ).filter(
+                Order.created_at.between(start_date, end_date),
+                Order.status != OrderStatus.CANCELLED
+            ).order_by(desc(Order.created_at)).all()
+
+            # Add order data rows
+            for order in orders:
+                # Get items for this order
+                items_query = db.query(
+                    MenuItem.name,
+                    OrderItem.quantity
+                ).join(
+                    OrderItem, MenuItem.id == OrderItem.menu_item_id
+                ).filter(
+                    OrderItem.order_id == order.id
+                ).all()
+                
+                # Format items string
+                items_str = ", ".join([f"{item.name} x{item.quantity}" for item in items_query])
+                
+                data.append([
+                    str(order.id),
+                    str(order.customer_id),
+                    items_str,
+                    order.created_at.strftime('%I:%M %p'),  # 12-hour format with AM/PM
+                    f"{float(order.total_amount):.2f}"
+                ])
+
+            # Create table with adjusted widths
+            table = Table(data, colWidths=[0.7*inch, 0.7*inch, 4*inch, 1*inch, 1*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.blue),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('WORDWRAP', (2, 1), (2, -1), True),  # Enable word wrap for items column
+            ]))
+
+            # Calculate table height based on number of rows
+            row_height = 0.4 * inch  # Adjust this value to control row height
+            table_height = row_height * len(data)
+            
+            # Position table with more space from top
+            table.wrapOn(c, width, height)
+            table.drawOn(c, inch, height - 180 - table_height)
+
+            # Draw Summary Section with proper spacing
+            summary_y = height - 200 - table_height  # Position summary below table
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(inch, summary_y, "Summary Section")
+            
+            c.setFont("Helvetica", 12)
+            summary_y -= 25
+            c.drawString(inch, summary_y, f"Total Orders Processed: {len(orders)}")
+            summary_y -= 20
+            total_revenue = sum(float(order.total_amount) for order in orders)
+            c.drawString(inch, summary_y, f"Total Revenue: Rs. {total_revenue:.2f}")
+            summary_y -= 20
+            
+            # Count unique users
+            unique_users = len(set(order.customer_id for order in orders))
+            c.drawString(inch, summary_y, f"Active Users: {unique_users}")
+
+            # Footer with proper spacing
+            c.setFont("Helvetica", 8)
+            c.drawString(inch, inch, f"Report generated on {formatted_date} at {formatted_time}")
+            c.drawString(width - 2*inch, inch, f"Page 1 of 1")
+            c.save()
+            messagebox.showinfo('Success', 'Report exported successfully!')
+        except Exception as e:
+            messagebox.showerror('Error', f'Failed to export report: {str(e)}')
+
     def update_reports(self, *args):
         self.update_metrics()
         self.update_charts()
         self.update_insights()
-    
-    def export_report(self):
-        # TODO: Implement report export functionality
-        pass

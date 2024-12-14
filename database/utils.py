@@ -100,3 +100,41 @@ def update_user_password(db: Session, user_id: int, new_password: str):
         db.commit()
         db.refresh(user)
     return user
+
+def get_setting(db: Session, key: str):
+    """Get a setting by key"""
+    return db.query(models.Setting).filter(models.Setting.key == key).first()
+
+def get_settings_by_section(db: Session, section: str):
+    """Get all settings in a section"""
+    return db.query(models.Setting).filter(models.Setting.section == section).all()
+
+def get_all_settings(db: Session):
+    """Get all settings"""
+    return db.query(models.Setting).all()
+
+def upsert_setting(db: Session, key: str, value: str, section: str, type: str):
+    """Create or update a setting"""
+    setting = db.query(models.Setting).filter(models.Setting.key == key).first()
+    if setting:
+        setting.value = value
+        setting.type = type
+    else:
+        setting = models.Setting(
+            key=key,
+            value=value,
+            section=section,
+            type=type
+        )
+        db.add(setting)
+    db.commit()
+    db.refresh(setting)
+    return setting
+
+def delete_setting(db: Session, key: str):
+    """Delete a setting"""
+    setting = db.query(models.Setting).filter(models.Setting.key == key).first()
+    if setting:
+        db.delete(setting)
+        db.commit()
+    return setting

@@ -64,3 +64,14 @@ class OrderItem(Base):
     
     order = relationship("Order", back_populates="items")
     menu_item = relationship("MenuItem", back_populates="order_items")
+
+class Setting(Base):
+    __tablename__ = "settings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, nullable=False)
+    value = Column(String, nullable=False)
+    section = Column(String, nullable=False)
+    type = Column(String, nullable=False)  # 'string', 'boolean', 'number'
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
