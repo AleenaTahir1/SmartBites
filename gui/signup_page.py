@@ -4,6 +4,10 @@ import customtkinter as ctk
 from PIL import Image
 from .base_page import BasePage
 from .constants import *
+from database.config import SessionLocal
+from database.utils import create_user
+from database.models import UserRole
+from tkinter import messagebox
 
 class SignupPage(BasePage):
     def __init__(self, parent, controller):
@@ -302,6 +306,8 @@ class SignupPage(BasePage):
         confirm_password = self.confirm_password_entry.get()
 
         if not username or not email or not password or not confirm_password:
+            self.error_label.configure(text="All fields are required")
+            self.error_label.place(relx=0.5, rely=0.72, anchor="center")
             return
 
         # Password length validation
@@ -321,6 +327,18 @@ class SignupPage(BasePage):
         self.error_label.place_forget()
         self.password_frame.configure(border_width=0)
         self.confirm_password_frame.configure(border_width=0)
+
+        # Create new user in database
+        try:
+            db = SessionLocal()
+            create_user(db, username, email, password, UserRole.CUSTOMER)
+            db.close()
+            messagebox.showinfo("Success", "Account created successfully! Please login.")
+            self.controller.show_page("LoginPage")
+        except Exception as e:
+            self.error_label.configure(text="Error creating account. Please try again.")
+            self.error_label.place(relx=0.5, rely=0.72, anchor="center")
+            print(f"Error creating user: {e}")
     
     def validate_password(self, password):
         """Validate password meets requirements"""

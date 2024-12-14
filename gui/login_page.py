@@ -5,6 +5,8 @@ from PIL import Image
 from tkinter import font
 from .base_page import BasePage
 from .constants import *
+from database.config import SessionLocal
+from database.utils import authenticate_user
 
 class LoginPage(BasePage):
     def __init__(self, parent, controller):
@@ -290,8 +292,23 @@ class LoginPage(BasePage):
         username = self.username_entry.get()
         password = self.password_entry.get()
         
-        # For now, just navigate to home page without authentication
-        self.controller.show_home_page()
+        if not username or not password:
+            self.error_label.configure(text="Please enter both username and password", text_color="red")
+            self.error_label.pack(pady=(0, 5))
+            return
+        
+        # Get database session
+        db = SessionLocal()
+        try:
+            user = authenticate_user(db, username, password)
+            if user:
+                self.controller.current_user = user
+                self.controller.show_home_page()
+            else:
+                self.error_label.configure(text="Invalid username or password", text_color="red")
+                self.error_label.pack(pady=(0, 5))
+        finally:
+            db.close()
 
     def toggle_password_visibility(self):
         self.show_password = not self.show_password

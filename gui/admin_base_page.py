@@ -101,6 +101,16 @@ class AdminBasePage(BasePage):
         )
         self.nav_container.pack(fill="both", expand=True, pady=(10, 0))
         
+        # Create right panel for content
+        self.right_panel = ctk.CTkFrame(
+            self,
+            fg_color=BG_COLOR,
+            corner_radius=0
+        )
+        self.right_panel.grid(row=0, column=1, sticky="nsew")
+        self.right_panel.grid_columnconfigure(0, weight=1)
+        self.right_panel.grid_rowconfigure(0, weight=1)
+
         # Navigation buttons
         nav_buttons = [
             ("Dashboard", "🏠", self.show_dashboard),
@@ -173,11 +183,11 @@ class AdminBasePage(BasePage):
         
         # Content area
         self.content_area = ctk.CTkFrame(
-            self,
+            self.right_panel,
             fg_color=BG_COLOR,
             corner_radius=15
         )
-        self.content_area.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self.content_area.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         self.content_area.grid_columnconfigure(0, weight=1)
         self.content_area.grid_rowconfigure(1, weight=1)
     

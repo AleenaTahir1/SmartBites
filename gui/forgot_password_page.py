@@ -4,6 +4,11 @@ from .constants import *
 import re
 import os
 from PIL import Image
+from database.config import SessionLocal
+from database.utils import get_user_by_email, update_user_password
+from tkinter import messagebox
+import random
+import string
 
 class ForgotPasswordPage(BasePage):
     def __init__(self, parent, controller):
@@ -399,63 +404,80 @@ class ForgotPasswordPage(BasePage):
 
     def send_reset_code(self):
         email = self.email_entry.get()
-        if not self.validate_email(email):
-            self.error_label.configure(text="Please enter a valid email address")
-            self.email_frame.configure(border_width=2, border_color=ERROR_COLOR)
+        
+        if not email:
+            self.error_label.configure(text="Please enter your email address")
+            self.error_label.place(relx=0.5, rely=0.57, anchor="center")
             return
         
-        # TODO: Implement sending reset code to email
-        print(f"Sending reset code to: {email}")
+        if not self.validate_email(email):
+            self.error_label.configure(text="Please enter a valid email address")
+            self.error_label.place(relx=0.5, rely=0.57, anchor="center")
+            return
         
-        # Hide email form and show verification form
+        # Check if email exists in database
+        db = SessionLocal()
+        user = get_user_by_email(db, email)
+        db.close()
+        
+        if not user:
+            self.error_label.configure(text="No account found with this email address")
+            self.error_label.place(relx=0.5, rely=0.57, anchor="center")
+            return
+        
+        # Generate a random 6-digit code
+        self.reset_code = ''.join(random.choices(string.digits, k=6))
+        self.user_id = user.id
+        
+        # In a real application, you would send this code via email
+        # For demo purposes, we'll show it in a message box
+        messagebox.showinfo("Reset Code", f"Your reset code is: {self.reset_code}\n\nIn a real application, this would be sent to your email.")
+        
+        # Hide the email entry container and show verification container
         self.center_container.pack_forget()
         self.verification_container.pack(expand=True, pady=(20, 40))
         
     def reset_password(self):
-        print("Reset password function called")
-        code = self.code_entry.get()
+        entered_code = self.code_entry.get()
         new_password = self.new_password_entry.get()
         confirm_password = self.confirm_password_entry.get()
-
-        # Basic validation
-        if not code or not new_password or not confirm_password:
-            print("Empty fields")
+        
+        if not entered_code or not new_password or not confirm_password:
+            self.password_error_label.configure(text="All fields are required")
+            self.password_error_label.place(relx=0.5, rely=0.74, anchor="center")
             return
         
-        # Password length validation
+        if not hasattr(self, 'reset_code') or entered_code != self.reset_code:
+            self.password_error_label.configure(text="Invalid reset code")
+            self.password_error_label.place(relx=0.5, rely=0.74, anchor="center")
+            return
+        
         if not self.validate_password(new_password):
             self.password_error_label.configure(text="Password must be at least 6 characters long")
             self.password_error_label.place(relx=0.5, rely=0.74, anchor="center")
-            self.new_password_frame.configure(border_width=2, border_color=ERROR_COLOR)
             return
         
         if new_password != confirm_password:
             self.password_error_label.configure(text="Passwords do not match")
             self.password_error_label.place(relx=0.5, rely=0.74, anchor="center")
-            self.confirm_password_frame.configure(border_width=2, border_color=ERROR_COLOR)
             return
-
-        print("Showing success message")
-        # Hide any error messages
-        self.password_error_label.place_forget()
-        self.new_password_frame.configure(border_width=0)
-        self.confirm_password_frame.configure(border_width=0)
         
-        # Show success message
-        self.success_label.place(relx=0.5, rely=0.9, anchor="center")
-        self.success_label.lift()
-        
-        # Clear all fields
-        self.code_entry.delete(0, 'end')
-        self.new_password_entry.delete(0, 'end')
-        self.confirm_password_entry.delete(0, 'end')
-        
-        # Disable the reset button
-        self.reset_password_btn.configure(state="disabled")
-        
-        print("Scheduling transition")
-        # Schedule transition to login page after 2 seconds
-        self.after(2000, self.go_to_login_direct)
+        try:
+            # Update password in database
+            db = SessionLocal()
+            update_user_password(db, self.user_id, new_password)
+            db.close()
+            
+            # Show success message
+            messagebox.showinfo("Success", "Password has been reset successfully!")
+            
+            # Return to login page
+            self.controller.show_page("LoginPage")
+            
+        except Exception as e:
+            self.password_error_label.configure(text="Error resetting password. Please try again.")
+            self.password_error_label.place(relx=0.5, rely=0.74, anchor="center")
+            print(f"Error resetting password: {e}")
     
     def go_to_login_direct(self):
         print("Going directly to login")

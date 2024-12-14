@@ -1,7 +1,8 @@
-customtkinter>=5.2.0
-Pillow>=10.0.0
-psycopg2-binary>=2.9.9
-SQLAlchemy>=2.0.23
+customtkinter==5.2.0
+Pillow==10.1.0
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+werkzeug==3.0.1
 python-dotenv>=1.0.0
 plyer>=2.1.0
 bcrypt>=4.0.1

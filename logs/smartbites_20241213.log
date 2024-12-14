@@ -1,0 +1,21 @@
+2024-12-13 14:15:36,407 - utils.image_handler - INFO - Successfully saved image: C:\Users\aleen\AppData\Local\Temp\tmpv9_m2d5r\test\test.png
+2024-12-13 14:15:36,440 - utils.image_handler - ERROR - Unsupported file extension: .txt
+2024-12-13 14:15:36,656 - utils.image_handler - INFO - Successfully saved image: C:\Users\aleen\AppData\Local\Temp\tmpm_zujd0p\test\test.png
+2024-12-13 14:15:36,658 - utils.image_handler - INFO - Successfully deleted image: C:\Users\aleen\AppData\Local\Temp\tmpm_zujd0p\test\test.png
+2024-12-13 14:15:36,748 - utils.image_handler - INFO - Retrieved dimensions for image: C:\Users\aleen\AppData\Local\Temp\tmplvow33_a\test.png
+2024-12-13 14:15:36,762 - utils.image_handler - ERROR - Error getting image dimensions: [Errno 2] No such file or directory: 'nonexistent.png'
+2024-12-13 14:15:36,763 - utils.image_handler - WARNING - Image not found: nonexistent.png
+2024-12-13 14:16:18,446 - utils.image_handler - INFO - Successfully saved image: C:\Users\aleen\AppData\Local\Temp\tmpub53reck\test\test.png
+2024-12-13 14:16:18,461 - utils.image_handler - ERROR - Unsupported file extension: .txt
+2024-12-13 14:16:18,625 - utils.image_handler - INFO - Successfully saved image: C:\Users\aleen\AppData\Local\Temp\tmpvtafhtaq\test\test.png
+2024-12-13 14:16:18,627 - utils.image_handler - INFO - Successfully deleted image: C:\Users\aleen\AppData\Local\Temp\tmpvtafhtaq\test\test.png
+2024-12-13 14:16:18,717 - utils.image_handler - INFO - Retrieved dimensions for image: C:\Users\aleen\AppData\Local\Temp\tmp9f7y_fg0\test.png
+2024-12-13 14:16:18,730 - utils.image_handler - ERROR - Error getting image dimensions: [Errno 2] No such file or directory: 'nonexistent.png'
+2024-12-13 14:16:18,731 - utils.image_handler - WARNING - Image not found: nonexistent.png
+2024-12-13 14:17:20,147 - utils.image_handler - INFO - Successfully saved image: C:\Users\aleen\AppData\Local\Temp\tmpbek5v2sd\test\test.png
+2024-12-13 14:17:20,165 - utils.image_handler - ERROR - Unsupported file extension: .txt
+2024-12-13 14:17:20,348 - utils.image_handler - INFO - Successfully saved image: C:\Users\aleen\AppData\Local\Temp\tmpwxdu4v2b\test\test.png
+2024-12-13 14:17:20,351 - utils.image_handler - INFO - Successfully deleted image: C:\Users\aleen\AppData\Local\Temp\tmpwxdu4v2b\test\test.png
+2024-12-13 14:17:20,441 - utils.image_handler - INFO - Retrieved dimensions for image: C:\Users\aleen\AppData\Local\Temp\tmpanrsf6f7\test.png
+2024-12-13 14:17:20,455 - utils.image_handler - ERROR - Error getting image dimensions: [Errno 2] No such file or directory: 'nonexistent.png'
+2024-12-13 14:17:20,456 - utils.image_handler - WARNING - Image not found: nonexistent.png
